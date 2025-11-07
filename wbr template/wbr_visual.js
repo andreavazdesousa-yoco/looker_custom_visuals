@@ -106,7 +106,7 @@ looker.plugins.visualizations.add({
             
             metricAggregates[key] = { current: currentVal, previous: previousVal };
 
-            if (type !== 'Year' && rank !== 0) { 
+            if (rank !== 0) { 
                 lineDataRaw.push({
                     type: type,
                     rank: rank,
@@ -120,27 +120,31 @@ looker.plugins.visualizations.add({
         // --- PoP Calculation for Cards ---
         let cardMetrics = {};
         const WTD_C = metricAggregates['Week_0']?.current;
-        const W_1_C = metricAggregates['Week_1']?.current;
         const MTD_C = metricAggregates['Month_0']?.current;
-        const M_1_C = metricAggregates['Month_1']?.current;
         const YTD_C = metricAggregates['Year_0']?.current;
         const YTD_P = metricAggregates['Year_0']?.previous;
 
-        if (WTD_C && W_1_C) {
-            cardMetrics.LastWk = WTD_C;
-            cardMetrics.WoW_Change = (WTD_C - W_1_C) / W_1_C;
-            cardMetrics.WoY_Change = (WTD_C - metricAggregates['Week_0']?.previous) / metricAggregates['Week_0']?.previous;
+        const W_1_C = metricAggregates['Week_1']?.current;
+        const W_2_C = metricAggregates['Week_2']?.current;
+        const W_1_P = metricAggregates['Week_1']?.previous;
+
+        const M_1_C = metricAggregates['Month_1']?.current;
+        const M_2_C = metricAggregates['Month_2']?.current;
+        const M_1_P = metricAggregates['Month_1']?.previous;
+
+        if (WTD_C && W_1_C && W_2_C && W_1_P) {
+            cardMetrics.WTD_Value = WTD_C;
+            cardMetrics.WoW_Change = (W_1_C - W_2_C) / W_2_C;
+            cardMetrics.WoY_Change = (W_1_C - W_1_P) / W_1_P;
         }
-        if (MTD_C && M_1_C) {
-            cardMetrics.MTD_Total = MTD_C;
-            cardMetrics.MoM_Change = (MTD_C - M_1_C) / M_1_C;
-            cardMetrics.MoY_Change = (MTD_C - metricAggregates['Month_0']?.previous) / metricAggregates['Month_0']?.previous;
+        if (MTD_C && M_1_C && M_2_C && M_1_P) {
+            cardMetrics.MTD_Value = MTD_C;
+            cardMetrics.MoM_Change = (M_1_C - M_2_C) / M_2_C;
+            cardMetrics.MoY_Change = (M_1_C - M_1_P) / M_1_P;
         }
         if (YTD_C && YTD_P) {
-            cardMetrics.YTD_Total = YTD_C;
+            cardMetrics.YTD_Value = YTD_C;
             cardMetrics.YoY_Change = (YTD_C - YTD_P) / YTD_P;
-            cardMetrics.QTD_Total = YTD_C * 0.25; 
-            cardMetrics.QoY_Change = cardMetrics.YoY_Change * 0.9; 
         }
         
         const weeklyData = lineDataRaw.filter(d => d.type === 'Week').sort((a, b) => b.rank - a.rank).reverse();
@@ -161,18 +165,17 @@ looker.plugins.visualizations.add({
             return `<span class="${className}">${formatter(value)}</span>`;
         };
 
-        const labels = ["LastWk", "WoW", "WoY", "MTD", "MoY", "QTD", "QoY", "YTD", "YoY"];
+        const labels = ["WTD", "WoW", "WoY", "MTD", "MoM", "MoY", "YTD", "YoY"];
         
         const values = [
-            metrics.LastWk, metrics.WoW_Change, metrics.WoY_Change, 
-            metrics.MTD_Total, metrics.MoY_Change, 
-            metrics.QTD_Total, metrics.QoY_Change, 
-            metrics.YTD_Total, metrics.YoY_Change
+            metrics.WTD_Value, metrics.WoW_Change, metrics.WoY_Change, 
+            metrics.MTD_Value, MoM_Change, metrics.MoY_Change, 
+            metrics.YTD_Value, metrics.YoY_Change
         ];
         
         const labelsHTML = labels.map(label => `<div class="metric-item"><div class="metric-label">${label}</div></div>`).join('');
         const valuesHTML = values.map((val, i) => {
-            const isPercent = [1, 2, 4, 6, 8].includes(i);
+            const isPercent = [1, 2, 4, 5, 7].includes(i);
             return `<div class="metric-item"><div class="metric-value">${formatMetric(val, isPercent)}</div></div>`;
         }).join('');
 
