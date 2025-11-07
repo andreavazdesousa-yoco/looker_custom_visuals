@@ -1,102 +1,199 @@
-/**
- * Welcome to the Looker Custom Visualization Builder! Please refer to the following resources 
- * to help you write your visualization:
- *  - API Documentation - https://github.com/looker/custom_visualizations_v2/blob/master/docs/api_reference.md
- *  - Example Visualizations - https://github.com/looker/custom_visualizations_v2/tree/master/src/examples
- *  - How to use the CVB - https://developers.looker.com/marketplace/tutorials/about-custom-viz-builder
- **/
-
 const visObject = {
- /**
-  * Configuration options for your visualization. In Looker, these show up in the vis editor
-  * panel but here, you can just manually set your default values in the code.
-  **/
-  options: {
-    first_option: {
-    	type: "string",
-      label: "My First Option",
-      default: "Default Value"
+    // Configuration for visualisation
+    options: {
+        chart_title: {
+            type: "string",
+            label: "Chart Title",
+            default: "Employee Data"
+        }
     },
-    second_option: {
-    	type: "number",
-      label: "My Second Option",
-      default: 42
+
+    // Calls visualisation
+    create: function(element) {
+        element.innerHTML = "<h1>Ready to render!</h1>";
+        const script = document.createElement('script');
+        script.src = 'https://d3js.org/d3.v4.min.js';
+        script.async = true;
+        document.body.appendChild(script);
+    },
+
+    // Calls function when data or configuration is changed
+    updateAsync: function(data, element, config, queryResponse, details, doneRendering) {
+        if (!data || !data.length) return;
+        console.log(data[0]);
+
+        // Check if D3 library is loaded
+        let intervalId = setInterval(() => {
+            if (typeof d3 !== 'undefined') {
+                clearInterval(intervalId);
+                renderVisualisation(data, element, doneRendering);
+            }
+        }, 100);
     }
-  },
- 
- /**
-  * The create function gets called when the visualization is mounted but before any
-  * data is passed to it.
-  **/
-	create: function(element, config){
-		element.innerHTML = "<h1>Ready to render!</h1>";
-	},
-
- /**
-  * UpdateAsync is the function that gets called (potentially) multiple times. It receives
-  * the data and should update the visualization with the new data.
-  **/
-	updateAsync: function(data, element, config, queryResponse, details, doneRendering){
-    // set the dimensions and margins of the graph
-    var margin = {top: 20, right: 20, bottom: 30, left: 40},
-        width = 960 - margin.left - margin.right,
-        height = 500 - margin.top - margin.bottom;
-
-    // set the ranges
-    var x = d3.scaleBand()
-              .range([0, width])
-              .padding(0.1);
-    var y = d3.scaleLinear()
-              .range([height, 0]);
-
-    // append the svg object to the body of the page
-    // append a 'group' element to 'svg'
-    // moves the 'group' element to the top left margin
-    element.innerHTML = ""
-    var svg = d3.select("#vis").append("svg")
-        .attr("width", width + margin.left + margin.right)
-        .attr("height", height + margin.top + margin.bottom)
-      .append("g")
-        .attr("transform", 
-              "translate(" + margin.left + "," + margin.top + ")");
-    
-    formattedData = []
-
-    // format the data
-    data.forEach(function(d) {
-      formattedData.push({
-      	count: d["game.count"]["value"],
-        friendly_class: d["game.friendly_class"]["value"],
-        opponent_class: d["game.opponent_class"]["value"]
-      });
-    });
-
-    // Scale the range of the data in the domains
-    x.domain(formattedData.map(function(d) { return d.friendly_class; }));
-    y.domain([0, d3.max(formattedData, function(d) { return d.count; })]);
-
-    // append the rectangles for the bar chart
-    svg.selectAll(".bar")
-      .data(formattedData)
-      .enter().append("rect")
-      .attr("class", "bar")
-      .attr("style", "fill: #6c43e0;")
-      .attr("x", function(d) { return x(d.friendly_class); })
-      .attr("width", x.bandwidth())
-      .attr("y", function(d) { return y(d.count); })
-      .attr("height", function(d) { return height - y(d.count); });
-
-    // add the x Axis
-    svg.append("g")
-      .attr("transform", "translate(0," + height + ")")
-      .call(d3.axisBottom(x));
-
-    // add the y Axis
-    svg.append("g")
-      .call(d3.axisLeft(y));
-
-		doneRendering()
-	}
 };
 
-looker.plugins.visualizations.add(visObject);
+// Render visualisation
+function renderVisualisation(data, element, doneRendering) {
+    const margin = { top: 50, right: 50, bottom: 30, left: 120 };
+    const width = 960 - margin.left - margin.right;
+    const height = 500 - margin.top - margin.bottom;
+
+    const x = d3.scaleLinear().range([0, width]);
+    const y = d3.scaleBand().range([height, 0]).padding(0.1);
+
+    element.innerHTML = "";
+
+    const svg = d3.select(element)
+        .append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+        .attr("transform", `translate(${margin.left},${margin.top})`);
+
+    const employeeData = processData(data);
+    setDomains(x, y, employeeData);
+
+    drawBars(svg, x, y, employeeData);
+    addLabels(svg, x, y, employeeData);
+    addCategoryHeaders(svg, x, y, employeeData);
+
+    doneRendering();
+}
+
+// Process data to required format for the visualisation
+function processData(data) {
+    const dataMap = {};
+
+    data.forEach(item => {
+        const job_level = item.job_level.value;
+        const employee_status = item.employee_status.value;
+
+        if (!dataMap[job_level]) {
+            dataMap[job_level] = {
+                job_level: job_level,
+                headcount: 0,
+                new_hires: 0,
+                leavers: 0
+            };
+        }
+
+        if (employee_status === 'existing') dataMap[job_level].headcount++;
+        else if (employee_status === 'new_hire') dataMap[job_level].new_hires++;
+        else if (employee_status === 'leaver') dataMap[job_level].leavers++;
+    });
+
+    return Object.values(dataMap);
+}
+
+// Set scales for x and y axis
+function setDomains(x, y, data) {
+    const total = d3.sum(data, d => d.headcount + d.new_hires + d.leavers);
+    x.domain([0, 1]);
+    y.domain(data.map(d => d.job_level));
+}
+
+
+// Draw bars on SVG for new hire, headcount and leavers
+function drawBars(svg, x, y, data) {
+    const total = d3.sum(data, d => d.headcount + d.new_hires + d.leavers);
+
+    // Add new hires bars
+    svg.selectAll(".new-hires-bar")
+        .data(data)
+        .enter().append("rect")
+        .attr("class", "new-hires-bar")
+        .attr("style", "fill: #D0F0C0;")
+        .attr("x", 0)
+        .attr("y", d => y(d.job_level))
+        .attr("width", d => x(d.new_hires / total))
+        .attr("height", y.bandwidth() / 2);
+
+    // Add headcount bars
+    svg.selectAll(".headcount-bar")
+        .data(data)
+        .enter().append("rect")
+        .attr("class", "headcount-bar")
+        .attr("style", "fill: #8fa9dc;")
+        .attr("x", d => x(0.5 - (d.headcount / total) / 2))
+        .attr("y", d => y(d.job_level))
+        .attr("width", d => x(d.headcount / total))
+        .attr("height", y.bandwidth() / 2);
+
+    // Add leavers bars
+    svg.selectAll(".leavers-bar")
+        .data(data)
+        .enter().append("rect")
+        .attr("class", "leavers-bar")
+        .attr("style", "fill: #e74c3c;")
+        .attr("x", d => x(1 - d.leavers / total))
+        .attr("y", d => y(d.job_level))
+        .attr("width", d => x(d.leavers / total))
+        .attr("height", y.bandwidth() / 2);
+}
+
+// Add percentage label
+function addLabels(svg, x, y, data) {
+    const total = d3.sum(data, d => d.headcount + d.new_hires + d.leavers);
+
+    function addPercentageLabels(selection, property, xOffset, widthFactor) {
+        selection.data().forEach(d => {
+            svg.append('text')
+                .attr('x', x(xOffset(d)) + x(widthFactor(d)) / 2)
+                .attr('y', y(d.job_level) + y.bandwidth() / 4)
+                .attr('font-size', '12px')
+                .attr('text-anchor', 'middle')
+                .text(((d[property] / total) * 100).toFixed(1) + '%');
+        });
+    }
+
+    addPercentageLabels(svg.selectAll('.new-hires-bar'), 'new_hires', d => 0, d => 0.04);
+    addPercentageLabels(svg.selectAll('.headcount-bar'), 'headcount', d => 0.5 - (d.headcount / total) / 2, d => d.headcount / total);
+    addPercentageLabels(svg.selectAll('.leavers-bar'), 'leavers', d => 1 - d.leavers / total, d => d.leavers / total);
+}
+
+// Add headers for different categories
+function addCategoryHeaders(svg, x, y, data) {
+    const total = d3.sum(data, d => d.headcount + d.new_hires + d.leavers);
+
+    const gap = 10;
+    svg.selectAll(".category-rect")
+        .data(data)
+        .enter().append("rect")
+        .attr("class", "category-rect")
+        .attr("fill", "none")
+        .attr("stroke", "#8fa9dc")
+        .attr("x", -120 + gap)
+        .attr("y", d => y(d.job_level))
+        .attr("width", 120 - 2 * gap)
+        .attr("height", y.bandwidth() / 2);
+
+    svg.selectAll(".category-label")
+        .data(data)
+        .enter().append("text")
+        .attr("class", "category-label")
+        .attr("x", -60)
+        .attr("y", d => y(d.job_level) + y.bandwidth() / 4)
+        .attr("dy", ".35em")
+        .attr("text-anchor", "middle")
+        .attr("style", "fill: black;")
+        .text(d => d.job_level);
+
+    function addCategoryLabel(xOffset, widthFactor, label) {
+        svg.append('text')
+            .attr('x', x(xOffset) + x(widthFactor) / 2)
+            .attr('y', -15)
+            .attr('font-size', '18px')
+            .attr('font-weight', 'bold')
+            .attr('text-anchor', 'middle')
+            .text(label);
+    }
+
+    const headcountWidthFactor = data[0].headcount / total;
+
+    addCategoryLabel(0, 0, 'New Hires');
+    addCategoryLabel(0.5 - headcountWidthFactor / 2, headcountWidthFactor, 'Headcount');
+    addCategoryLabel(1 - data[0].leavers / total, 0, 'Leavers');
+}
+
+// Register visualisation on Looker
+looker.plugins.Visualisations.add(visObject);
