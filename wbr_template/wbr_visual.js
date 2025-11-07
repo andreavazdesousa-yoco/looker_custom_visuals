@@ -74,7 +74,7 @@ looker.plugins.visualizations.add({
         const { weeklyData, monthlyData, cardMetrics } = this.parseLookerData(queryResponse);
 
         this.renderMetricsCard(cardMetrics, config);
-        this.renderDualCharts(weeklyData, monthlyData, config, this.chartContainer);
+        //this.renderDualCharts(weeklyData, monthlyData, config, this.chartContainer);
 
         done();
     },
@@ -181,62 +181,62 @@ looker.plugins.visualizations.add({
 
         this.querySelector('#metrics-card-labels').innerHTML = labelsHTML;
         this.querySelector('#metrics-card-values').innerHTML = valuesHTML;
-    },
+    }//,
 
-    // --- 6. DUAL CHART RENDERING ---
-    renderDualCharts: function(weeklyData, monthlyData, config, container) {
-        d3.select(container).selectAll('*').remove();
+    // // --- 6. DUAL CHART RENDERING ---
+    // renderDualCharts: function(weeklyData, monthlyData, config, container) {
+    //     d3.select(container).selectAll('*').remove();
         
-        const chartArea = d3.select(container)
-            .style("display", "flex")
-            .style("justify-content", "space-around");
+    //     const chartArea = d3.select(container)
+    //         .style("display", "flex")
+    //         .style("justify-content", "space-around");
         
-        const weeklyDiv = chartArea.append("div").attr("id", "weekly-chart").style("width", "50%");
-        const monthlyDiv = chartArea.append("div").attr("id", "monthly-chart").style("width", "50%");
+    //     const weeklyDiv = chartArea.append("div").attr("id", "weekly-chart").style("width", "50%");
+    //     const monthlyDiv = chartArea.append("div").attr("id", "monthly-chart").style("width", "50%");
 
-        const allDataMax = d3.max([
-            d3.max(weeklyData, d => Math.max(d.current || 0, d.previous || 0)),
-            d3.max(monthlyData, d => Math.max(d.current || 0, d.previous || 0))
-        ]);
+    //     const allDataMax = d3.max([
+    //         d3.max(weeklyData, d => Math.max(d.current || 0, d.previous || 0)),
+    //         d3.max(monthlyData, d => Math.max(d.current || 0, d.previous || 0))
+    //     ]);
         
-        this.drawChart(weeklyData, config, weeklyDiv.node(), "Weekly Aggregates", allDataMax);
-        this.drawChart(monthlyData, config, monthlyDiv.node(), "Monthly Aggregates", allDataMax);
-    },
+    //     this.drawChart(weeklyData, config, weeklyDiv.node(), "Weekly Aggregates", allDataMax);
+    //     this.drawChart(monthlyData, config, monthlyDiv.node(), "Monthly Aggregates", allDataMax);
+    // },
     
-    // --- 7. REUSABLE CHART DRAWING HELPER ---
-    drawChart: function(data, config, container, title, sharedYMax) {
-        const margin = { top: 20, right: 30, bottom: 50, left: 60 };
-        const chartWidth = container.clientWidth - margin.left - margin.right;
-        const chartHeight = container.clientHeight - margin.top - margin.bottom;
+    // // --- 7. REUSABLE CHART DRAWING HELPER ---
+    // drawChart: function(data, config, container, title, sharedYMax) {
+    //     const margin = { top: 20, right: 30, bottom: 50, left: 60 };
+    //     const chartWidth = container.clientWidth - margin.left - margin.right;
+    //     const chartHeight = container.clientHeight - margin.top - margin.bottom;
 
-        if (chartWidth <= 0 || chartHeight <= 0) return;
+    //     if (chartWidth <= 0 || chartHeight <= 0) return;
 
-        const svg = d3.select(container).append("svg")
-            .attr("width", chartWidth + margin.left + margin.right)
-            .attr("height", chartHeight + margin.top + margin.bottom)
-            .append("g")
-            .attr("transform", `translate(${margin.left},${margin.top})`);
+    //     const svg = d3.select(container).append("svg")
+    //         .attr("width", chartWidth + margin.left + margin.right)
+    //         .attr("height", chartHeight + margin.top + margin.bottom)
+    //         .append("g")
+    //         .attr("transform", `translate(${margin.left},${margin.top})`);
             
-        svg.append("text").attr("x", chartWidth / 2).attr("y", 0 - (margin.top / 2))
-            .attr("text-anchor", "middle").style("font-size", "14px").style("font-weight", "bold").text(title);
+    //     svg.append("text").attr("x", chartWidth / 2).attr("y", 0 - (margin.top / 2))
+    //         .attr("text-anchor", "middle").style("font-size", "14px").style("font-weight", "bold").text(title);
 
-        const xDomain = data.map(d => d.label);
-        const x = d3.scalePoint().domain(xDomain).range([0, chartWidth]).padding(0.5);
+    //     const xDomain = data.map(d => d.label);
+    //     const x = d3.scalePoint().domain(xDomain).range([0, chartWidth]).padding(0.5);
 
-        const y = d3.scaleLinear().domain([0, sharedYMax * 1.1]).range([chartHeight, 0]);
+    //     const y = d3.scaleLinear().domain([0, sharedYMax * 1.1]).range([chartHeight, 0]);
 
-        svg.append("g").attr("transform", `translate(0,${chartHeight})`)
-            .call(d3.axisBottom(x).tickSizeOuter(0)).selectAll("text")
-            .style("text-anchor", "end").attr("dx", "-.8em").attr("dy", ".15em").attr("transform", "rotate(-45)");
+    //     svg.append("g").attr("transform", `translate(0,${chartHeight})`)
+    //         .call(d3.axisBottom(x).tickSizeOuter(0)).selectAll("text")
+    //         .style("text-anchor", "end").attr("dx", "-.8em").attr("dy", ".15em").attr("transform", "rotate(-45)");
 
-        svg.append("g").call(d3.axisLeft(y).tickFormat(d3.format(config.value_format)));
+    //     svg.append("g").call(d3.axisLeft(y).tickFormat(d3.format(config.value_format)));
 
-        const line = (key, color) => {
-            const lineGenerator = d3.line().x(d => x(d.label)).y(d => y(d[key])).defined(d => d[key] !== null); 
-            svg.append("path").datum(data).attr("fill", "none").attr("stroke", color).attr("stroke-width", 2).attr("d", lineGenerator);
-        };
+    //     const line = (key, color) => {
+    //         const lineGenerator = d3.line().x(d => x(d.label)).y(d => y(d[key])).defined(d => d[key] !== null); 
+    //         svg.append("path").datum(data).attr("fill", "none").attr("stroke", color).attr("stroke-width", 2).attr("d", lineGenerator);
+    //     };
 
-        line('current', config.current_color); 
-        line('previous', config.prev_color);
-    }
+    //     line('current', config.current_color); 
+    //     line('previous', config.prev_color);
+    // }
 });
